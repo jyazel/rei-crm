@@ -1,0 +1,287 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String
+  timezone  String   @default("America/New_York")
+  avatarUrl String?
+  role      String   @default("member")
+  teamId    String?
+  team      Team?    @relation(fields: [teamId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tasks     Task[]
+}
+
+model Team {
+  id           String   @id @default(cuid())
+  name         String
+  phone        String?
+  billingEmail String?
+  address      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  users        User[]
+}
+
+model Contact {
+  id             String   @id @default(cuid())
+  fullName       String
+  firstName      String?
+  lastName       String?
+  email          String?
+  phonePrimary   String?
+  phoneSecondary String?
+  address        String?
+  address2       String?
+  city           String?
+  state          String?
+  zip            String?
+  category       String   @default("None")
+  doNotMail      Boolean  @default(false)
+  description    String?
+  tags           String[]
+  teamId         String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deals          DealContact[]
+  properties     Property[]
+  campaignRecords CampaignRecord[]
+  conversations  Conversation[]
+  enrollments    ActionPlanEnrollment[]
+}
+
+model Property {
+  id               String   @id @default(cuid())
+  county           String?
+  apn              String?
+  acreage          Float?
+  legalDescription String?
+  address          String?
+  address2         String?
+  city             String?
+  state            String?
+  zip              String?
+  bedrooms         Int?
+  bathrooms        Float?
+  floors           Int?
+  yearBuilt        Int?
+  sqft             Float?
+  lat              Float?
+  lng              Float?
+  tags             String[]
+  status           String   @default("active")
+  ownerId          String?
+  owner            Contact? @relation(fields: [ownerId], references: [id])
+  teamId           String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  campaignRecords  CampaignRecord[]
+  deals            DealProperty[]
+}
+
+model Board {
+  id        String   @id @default(cuid())
+  name      String
+  type      String
+  teamId    String?
+  createdAt DateTime @default(now())
+  stages    Stage[]
+}
+
+model Stage {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @default("#6366f1")
+  order     Int      @default(0)
+  boardId   String
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  deals     Deal[]
+  createdAt DateTime @default(now())
+}
+
+model Deal {
+  id             String    @id @default(cuid())
+  title          String
+  estimatedValue Float?
+  source         String    @default("Other")
+  priority       String    @default("None")
+  stageId        String
+  stage          Stage     @relation(fields: [stageId], references: [id])
+  campaignId     String?
+  campaign       Campaign? @relation(fields: [campaignId], references: [id])
+  teamId         String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  contacts       DealContact[]
+  properties     DealProperty[]
+  tasks          Task[]
+  notes          Note[]
+}
+
+model DealContact {
+  dealId    String
+  contactId String
+  deal      Deal    @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  @@id([dealId, contactId])
+}
+
+model DealProperty {
+  dealId     String
+  propertyId String
+  deal       Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  @@id([dealId, propertyId])
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  taskList    String?
+  dueDate     DateTime?
+  completedAt DateTime?
+  assigneeId  String?
+  assignee    User?     @relation(fields: [assigneeId], references: [id])
+  dealId      String?
+  deal        Deal?     @relation(fields: [dealId], references: [id])
+  teamId      String?
+  createdAt   DateTime  @default(now())
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  body      String
+  dealId    String?
+  deal      Deal?    @relation(fields: [dealId], references: [id])
+  authorId  String?
+  teamId    String?
+  createdAt DateTime @default(now())
+}
+
+model Campaign {
+  id             String   @id @default(cuid())
+  name           String
+  status         String   @default("active")
+  mailType       String?
+  printType      String?
+  doubleSided    Boolean  @default(false)
+  templateId     String?
+  dailySendCount Int      @default(250)
+  returnAddress  String?
+  amountSpent    Float    @default(0)
+  responseRate   Float    @default(0)
+  teamId         String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  records        CampaignRecord[]
+  deals          Deal[]
+}
+
+model CampaignRecord {
+  id         String    @id @default(cuid())
+  campaignId String
+  campaign   Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contactId  String?
+  contact    Contact?  @relation(fields: [contactId], references: [id])
+  propertyId String?
+  property   Property? @relation(fields: [propertyId], references: [id])
+  price      Float?
+  status     String    @default("pending")
+  mailedAt   DateTime?
+  code       String?
+  createdAt  DateTime  @default(now())
+}
+
+model Inbox {
+  id            String   @id @default(cuid())
+  name          String
+  type          String
+  phoneNumber   String?
+  silentMode    Boolean  @default(false)
+  teamId        String?
+  createdAt     DateTime @default(now())
+  conversations Conversation[]
+}
+
+model Conversation {
+  id        String    @id @default(cuid())
+  inboxId   String
+  inbox     Inbox     @relation(fields: [inboxId], references: [id])
+  contactId String?
+  contact   Contact?  @relation(fields: [contactId], references: [id])
+  phone     String?
+  email     String?
+  isRead    Boolean   @default(false)
+  teamId    String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  messages  Message[]
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  body           String?
+  direction      String
+  type           String
+  duration       Int?
+  recording      String?
+  status         String       @default("delivered")
+  createdAt      DateTime     @default(now())
+}
+
+model ActionPlan {
+  id          String   @id @default(cuid())
+  name        String
+  totalDays   Int      @default(0)
+  teamId      String?
+  createdAt   DateTime @default(now())
+  steps       ActionPlanStep[]
+  enrollments ActionPlanEnrollment[]
+}
+
+model ActionPlanStep {
+  id            String     @id @default(cuid())
+  planId        String
+  plan          ActionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  stepNumber    Int
+  dayOfPlan     Int
+  timeOfDay     String     @default("08:00")
+  contactMethod String
+  templateId    String?
+  createdAt     DateTime   @default(now())
+}
+
+model ActionPlanEnrollment {
+  id          String     @id @default(cuid())
+  planId      String
+  plan        ActionPlan @relation(fields: [planId], references: [id])
+  contactId   String
+  contact     Contact    @relation(fields: [contactId], references: [id])
+  status      String     @default("active")
+  startedAt   DateTime   @default(now())
+  completedAt DateTime?
+}
+
+model Template {
+  id          String   @id @default(cuid())
+  name        String
+  type        String
+  mailingType String?
+  subject     String?
+  body        String?
+  teamId      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
